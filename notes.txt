@@ -1,0 +1,9 @@
+L1
+----
+Go to: https://getbootstrap.com/docs/5.3/getting-started/introduction/
+Copy the boiler plate template from there to index.html
+Bootstrap has pre-built components, unlike tailwind CSS, but the later is more customizable.
+
+Components
+----------
+Accordion - 

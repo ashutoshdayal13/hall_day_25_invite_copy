@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Particle System</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            overflow: hidden; /* Prevent page movement */
+        }
+        body {
+            background: url('bg2.gif') no-repeat center center fixed; /* Set bg2.gif as background */
+            background-size: cover;
+            color: #ffffff;
+            margin: 0;
+            font-family: 'Dancing Script', cursive; /* Apply cursive font */
+            touch-action: none; /* Prevent background movement on touch */
+        }
+        .overlay {
+            background-color: transparent; /* Make overlay transparent */
+        }
+        .particle {
+            position: absolute;
+            border-radius: 50%; /* Circular shape */
+            pointer-events: none;
+            opacity: 0.9;
+            transform: scale(1);
+            animation: fadeOut 3s forwards; /* Longer fade-out duration */
+        }
+        h1 {
+            font-size: 6.5rem; /* Increased from 5rem */
+            font-weight: 900; /* Maximum boldness */
+            text-shadow: none;  /* Remove text shadow */
+        }
+        p {
+            font-size: 2rem; /* Increased from 1.5rem */
+            font-weight: 800; /* Increased boldness */
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+        }
+
+        .text-transition {
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        .fade-out {
+            opacity: 0;
+        }
+        
+        .fade-in {
+            opacity: 1;
+        }
+
+        .details-text {
+            font-size: 1.8rem;
+            font-weight: 900;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+        }
+        .date-time-text {
+            font-size: 1.4rem;
+            font-weight: 900;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+    <script>
+        function getNameFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const name = params.get('name');
+            return name ? decodeURIComponent(name) : '';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const name = getNameFromURL();
+            document.title = `You are invited${name ? `, ${name}` : ''}!`; // Update title dynamically
+            const nameElement = document.getElementById('guestName');
+            const commaElement = document.getElementById('nameComma');
+            
+            if (name) {
+                nameElement.textContent = name;
+                commaElement.style.display = 'inline';
+            }
+
+            const invitedText = document.querySelector('.invited-text');
+            let timeoutIds = [];
+            let interactionCount = 0;  // Track number of interactions
+            let isInside = false;
+            let isAnimating = false;  // Track if animation is in progress
+
+            function handleInteraction() {
+                if (interactionCount >= 2 || isAnimating) return;  // Allow only 2 interactions
+                isAnimating = true;
+
+                timeoutIds.forEach(id => clearTimeout(id));
+                timeoutIds = [];
+                
+                invitedText.textContent = "Not Invited";
+                
+                timeoutIds.push(setTimeout(() => {
+                    invitedText.textContent = `Kidding Yrr!! You're the Guest of Honour!!`;
+                    
+                    timeoutIds.push(setTimeout(() => {
+                        invitedText.textContent = "You're Invited";
+                        isAnimating = false;
+                        interactionCount++;  // Increment counter after animation completes
+                        
+                        // Remove listeners only after second interaction
+                        if (interactionCount >= 2) {
+                            invitedText.removeEventListener('mouseenter', handleInteraction);
+                            document.removeEventListener('touchmove', handleTouchMove);
+                        }
+                    }, 5000));
+                }, 3000));
+            }
+
+            // Check if a point is inside the element
+            function isPointInside(x, y, element) {
+                const rect = element.getBoundingClientRect();
+                return x >= rect.left && x <= rect.right && 
+                       y >= rect.top && y <= rect.bottom;
+            }
+
+            // Add the event listener for hover
+            invitedText.addEventListener('mouseenter', handleInteraction);
+            
+            // Handle touch move across the entire document
+            document.addEventListener('touchmove', (e) => {
+                const touch = e.touches[0];
+                const touchInside = isPointInside(touch.clientX, touch.clientY, invitedText);
+
+                if (touchInside && !isInside) {
+                    isInside = true;
+                    handleInteraction();
+                } else if (!touchInside) {
+                    isInside = false;
+                }
+            }, { passive: true });
+
+            // Replace touchstart with better touch handling
+            invitedText.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevent default touch behavior
+                handleInteraction();
+            }, { passive: false });
+
+            // Prevent touch events from interfering with particle system
+            invitedText.addEventListener('touchmove', (e) => {
+                e.stopPropagation();
+            }, { passive: false });
+
+            document.body.addEventListener('mousemove', handleMouseMove);
+            document.body.addEventListener('touchmove', handleTouchMove, { passive: false });
+        });
+
+        function createParticle(x, y) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = `${x}px`;
+            particle.style.top = `${y}px`;
+            document.body.appendChild(particle);
+
+            const size = Math.random() * 8 + 4; // Smaller size for better performance
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+
+            const colors = ['#ff4500', '#ff6347', '#ffa07a', '#ff7f50', '#ffdab9', '#00bfff', '#1e90ff', '#87cefa'];
+            particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+            const angle = Math.random() * Math.PI; // Random angle for downward motion
+            const velocity = Math.random() * 4 + 1; // Reduced velocity for smoother motion
+            const vx = Math.cos(angle) * velocity;
+            const vy = Math.sin(angle) * velocity + 1.5; // Add gravity effect
+
+            let life = 200; // Reduced life duration for fewer active particles
+
+            const interval = setInterval(() => {
+                if (life <= 0) {
+                    clearInterval(interval);
+                    particle.remove();
+                } else {
+                    life -= 5;
+                    const currentX = parseFloat(particle.style.left) + vx;
+                    const currentY = parseFloat(particle.style.top) + vy;
+
+                    particle.style.left = `${currentX}px`;
+                    particle.style.top = `${currentY}px`;
+                }
+            }, 16);
+        }
+
+        function emitParticles(x, y) {
+            for (let i = 0; i < 5; i++) { // Emit fewer particles per move
+                createParticle(x, y);
+            }
+        }
+
+        function handleMouseMove(event) {
+            emitParticles(event.clientX, event.clientY);
+        }
+
+        function handleTouchMove(event) {
+            const touch = event.touches[0];
+            emitParticles(touch.clientX, touch.clientY);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.body.addEventListener('mousemove', handleMouseMove);
+            document.body.addEventListener('touchmove', handleTouchMove); // Add touch support
+        });
+    </script>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="overlay p-8 rounded-lg text-white text-center max-w-lg">
+        <h1 class="text-4xl font-bold mb-4"> <!-- Removed text-shadow-lg -->
+            <span class="invited-text text-transition">You're Invited</span><span id="nameComma" style="display: none">, </span>
+            <span id="guestName"></span>!
+        </h1>
+        
+        <p class="text-lg italic mb-6">"Because the best nights are the ones we'll never forget"</p>
+        
+        <div class="text-left">
+            <p class="details-text mb-3"><strong>Host:</strong> Aryan, Ashutosh, Subhro</p>
+            <p class="details-text mb-3"><strong>Location:</strong> Room No. B403, Patel Hall</p>
+            <p class="date-time-text mb-3"><strong>Date:</strong> 28/03/25</p>
+            <p class="date-time-text mb-3"><strong>Time:</strong> Once it gets dark</p>
+        </div>
+    </div>
+</body>
+</html>
